@@ -1,0 +1,41 @@
+---
+title: "CustomerSegmentation"
+output: html_document
+---
+1.IMPORTING AND EXPLORİNG THE DATASET
+
+```{r}
+library("dplyr")
+data <- read.csv("Customers.csv")
+head(data, 5)
+dim(data)
+sum(is.na(data))
+summary(data)
+SD <- data %>%
+        select(-c(CustomerID,Gender)) %>%
+          apply(2,sd)
+as.data.frame(SD)
+
+```
+
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
