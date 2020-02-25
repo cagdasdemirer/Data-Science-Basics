@@ -1,0 +1,134 @@
+---
+title: "FraudDetection"
+output: html_document
+---
+
+```{r}
+# Hides all code except for output
+knitr::opts_chunk$set(echo = F)
+```
+
+```{r}
+library(ranger)
+library(caret)
+library(data.table)
+library(funModeling)
+
+
+cc_data <- read.csv("creditcard.csv")
+#You can download the Credit_Card Dataset from https://drive.google.com/file/d/1CTAlmlREFRaEN3NoHHitewpqAtWS5cVQ/view
+```
+
+```{r}
+names(cc_data)
+dim(cc_data)
+status(cc_data)
+head(cc_data,5)
+tail(cc_data,5)
+```
+
+```{r}
+table(cc_data$Class)
+summary(cc_data$Amount)
+sd(cc_data$Amount)
+```
+
+```{r}
+cc_data$Amount <- scale(cc_data$Amount)
+df <- cc_data[,-c(1)]
+head(df)
+```
+
+```{r}
+library(caTools)
+
+set.seed(123)
+df_sample <- sample.split(df$Class, SplitRatio = 0.80)
+train_data <- subset(df,df_sample==TRUE)
+test_data <- subset(df,df_sample==FALSE)
+dim(train_data)
+dim(test_data)
+```
+
+Fitting Logistic Regression Model
+
+```{r}
+Logistic_Model <- glm(Class~., test_data, family = binomial())
+summary(Logistic_Model)
+plot(Logistic_Model)
+```
+
+In order to assess the performance of our model, we will delineate the ROC curve.For this, we will first import the ROC package and then plot our ROC curve to analyze its performance.
+
+```{r}
+library(pROC)
+
+Logistic_Model <- glm(Class~., train_data, family = binomial())
+lr.predict <- predict(Logistic_Model, test_data, probability = TRUE)
+auc.gbm <- roc(test_data$Class, lr.predict, plot = TRUE, col = "red")
+
+```
+
+Fitting a Decision Tree Model
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+decisionTree_model <- rpart(Class ~ . , cc_data, method = 'class')
+predicted_val <- predict(decisionTree_model, cc_data, type = 'class')
+probability <- predict(decisionTree_model, cc_data, type = 'prob')
+rpart.plot(decisionTree_model)
+
+```
+
+Artificial Neural Network
+
+In the case of Artificial Neural Networks, there is a range of values that is between 1 and 0. We set a threshold as 0.5, that is, values above 0.5 will correspond to 1 and the rest will be 0.
+
+```{r}
+library(neuralnet)
+
+ANN_model <- neuralnet (Class~.,train_data,linear.output=FALSE)
+plot(ANN_model)
+predANN <- compute(ANN_model,test_data)
+resultANN <- predANN$net.result
+resultANN <- ifelse(resultANN > 0.5,1,0)
+
+```
+
+Gradient Boosting (GBM)
+
+```{r}
+library(gbm, quietly=TRUE)
+# Get the time to train the GBM model
+system.time(
+       model_gbm <- gbm(Class ~ .
+               , distribution = "bernoulli"
+               , data = rbind(train_data, test_data)
+               , n.trees = 500
+               , interaction.depth = 3
+               , n.minobsinnode = 100
+               , shrinkage = 0.01
+               , bag.fraction = 0.5
+               , train.fraction = nrow(train_data) / (nrow(train_data) + nrow(test_data))
+)
+)
+# Determine best iteration based on test data
+gbm.iter = gbm.perf(model_gbm, method = "test")
+
+
+model.influence = relative.influence(model_gbm, n.trees = gbm.iter, sort. = TRUE)
+#Plot the gbm model
+plot(model_gbm)
+```
+
+Calculating AUC on test data
+
+```{r}
+gbm_test = predict(model_gbm, newdata = test_data, n.trees = gbm.iter)
+gbm_auc = roc(test_data$Class, gbm_test, plot = TRUE, col = "red")
+print(gbm_auc)
+
+```
+
