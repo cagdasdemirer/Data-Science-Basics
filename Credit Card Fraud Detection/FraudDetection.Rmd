@@ -53,7 +53,7 @@ dim(test_data)
 Fitting Logistic Regression Model
 
 ```{r}
-Logistic_Model <- glm(Class~., test_data, family = binomial())
+Logistic_Model <- glm(. ~ Class, test_data, family = binomial())
 summary(Logistic_Model)
 plot(Logistic_Model)
 ```
@@ -63,10 +63,12 @@ In order to assess the performance of our model, we will delineate the ROC curve
 ```{r}
 library(pROC)
 
-Logistic_Model <- glm(Class~., train_data, family = binomial())
-lr.predict <- predict(Logistic_Model, test_data, probability = TRUE)
+Logistic_Model <- stats::glm(Class ~ ., train_data, family = binomial(link = "logit"))
+lr.predict <- stats::predict(Logistic_Model, test_data[,-30], type = "response")
 auc.gbm <- roc(test_data$Class, lr.predict, plot = TRUE, col = "red")
 
+train_data$Class <- as.factor(train_data$Class) 
+str(train_data)
 ```
 
 Fitting a Decision Tree Model
